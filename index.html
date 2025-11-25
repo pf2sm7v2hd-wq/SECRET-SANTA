@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <title>Secret Santa 抽签小工具（带专属链接）</title>
+  <title>Secret Santa 抽签小工具（带规则提醒）</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     * {
@@ -186,7 +186,7 @@
   <div class="card">
     <div class="title">Secret Santa 抽签小工具</div>
     <div class="subtitle" id="subtitleHost">
-      主持人模式：填写所有人名字，生成<span class="badge">专属链接</span>，发给每个人即可 🎄
+      主持人模式：填写所有人名字 + 活动规则，生成<span class="badge">专属链接</span>，发给每个人即可 🎄
     </div>
     <div class="subtitle hidden" id="subtitleView">
       查看者模式：这是你的专属 Secret Santa 抽签结果 🎁
@@ -200,6 +200,20 @@
         至少需要 3 个人；建议使用微信昵称或大家都能认出的称呼。
       </div>
 
+      <!-- 活动规则设置 -->
+      <label for="ruleBudget">预算（可选）</label>
+      <input id="ruleBudget" type="text" placeholder="例如：50～80 元"
+             style="width:100%;padding:6px 8px;border-radius:8px;border:1px solid #ddd;font-size:14px;margin-bottom:6px;">
+
+      <label for="ruleDeadline">送达时间（可选）</label>
+      <input id="ruleDeadline" type="text" placeholder="例如：12 月 24 日晚上前"
+             style="width:100%;padding:6px 8px;border-radius:8px;border:1px solid #ddd;font-size:14px;margin-bottom:6px;">
+
+      <label for="ruleNote">其他要求 / 备注（可选）</label>
+      <textarea id="ruleNote"
+        placeholder="例如：尽量实用；避免送吃不完的零食；不要送香水 / 彩妆～"
+        style="width:100%;min-height:70px;border-radius:10px;border:1px solid #ddd;padding:6px 8px;font-size:14px;"></textarea>
+
       <div class="options">
         <input type="checkbox" id="noMutual">
         <label for="noMutual" style="margin:0; font-weight:400;">尽量避免互相送礼（A→B 且 B→A）</label>
@@ -207,12 +221,12 @@
 
       <div class="btn-row">
         <button class="btn-primary" id="generateBtn">✨ 生成专属链接</button>
-        <button class="btn-secondary" id="clearBtn">清空名单</button>
+        <button class="btn-secondary" id="clearBtn">清空内容</button>
       </div>
 
       <div class="small">
-        生成后，你只会看到“送礼人 + 对应的专属链接”，不会显示“送给谁”。<br>
-        把对应那一行的链接复制发给那个人，他点开就能看到自己的收礼对象。
+        生成后，你只会看到「送礼人 + 对应的专属链接」，不会显示「送给谁」。<br>
+        把对应那一行的链接复制发给那个人，他点开就能看到自己的收礼对象和活动规则。
       </div>
 
       <div id="resultBox" class="result hidden">
@@ -226,7 +240,8 @@
           <thead>
             <tr>
               <th style="width:80px;">送礼人</th>
-              <th>专属链接（复制后发给他）</th>
+              <th>专属链接（复制后发给 TA）</th>
+              <th style="width:90px;">操作</th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -244,7 +259,16 @@
       <p style="font-size:15px;line-height:1.8;">
         你要悄悄给 👉 <strong id="viewerReceiver" style="font-size:16px;"></strong> 👈 准备一份礼物～
       </p>
-      <p class="small">
+
+      <!-- 在查看页显示活动规则 -->
+      <div id="rulesBox" class="small hidden" style="margin-top:10px;">
+        <p><strong>活动规则提醒：</strong></p>
+        <p id="vBudget"></p>
+        <p id="vDeadline"></p>
+        <p id="vNote"></p>
+      </div>
+
+      <p class="small" style="margin-top:10px;">
         可以先记下来，关闭页面后下次点进同一个链接也能再看到。<br>
         请不要把这条链接随便转给别人，不然对方会看到你的结果 🙈
       </p>
@@ -274,6 +298,29 @@
         giverEl.textContent = decoded.giver || '你';
         receiverEl.textContent = decoded.receiver || '某位神秘朋友';
 
+        // 显示活动规则
+        const rulesBox   = document.getElementById('rulesBox');
+        const vBudget    = document.getElementById('vBudget');
+        const vDeadline  = document.getElementById('vDeadline');
+        const vNote      = document.getElementById('vNote');
+
+        let hasRule = false;
+        if (decoded.budget) {
+          vBudget.textContent = '🎁 预算：' + decoded.budget;
+          hasRule = true;
+        }
+        if (decoded.deadline) {
+          vDeadline.textContent = '⏰ 时间：' + decoded.deadline;
+          hasRule = true;
+        }
+        if (decoded.note) {
+          vNote.textContent = '📌 其他要求：' + decoded.note;
+          hasRule = true;
+        }
+        if (hasRule && rulesBox) {
+          rulesBox.classList.remove('hidden');
+        }
+
         hostMode.classList.add('hidden');
         subtitleHost.classList.add('hidden');
         viewMode.classList.remove('hidden');
@@ -282,7 +329,7 @@
         alert('这个链接好像有点问题，无法解析抽签结果。');
       }
     } else {
-      // 正常主持人模式
+      // 主持人模式
       const namesTextarea = document.getElementById('names');
       const generateBtn = document.getElementById('generateBtn');
       const clearBtn = document.getElementById('clearBtn');
@@ -361,6 +408,11 @@
           return;
         }
 
+        // 读取活动规则
+        const ruleBudget   = document.getElementById('ruleBudget').value.trim();
+        const ruleDeadline = document.getElementById('ruleDeadline').value.trim();
+        const ruleNote     = document.getElementById('ruleNote').value.trim();
+
         const avoidMutual = noMutualCheckbox.checked;
         const result = generateAssignments(names, avoidMutual);
 
@@ -380,8 +432,11 @@
 
         for (let i = 0; i < names.length; i++) {
           const payload = {
-            giver: names[i],
-            receiver: receivers[i]
+            giver:    names[i],
+            receiver: receivers[i],
+            budget:   ruleBudget,
+            deadline: ruleDeadline,
+            note:     ruleNote
           };
           const encoded = encodeURIComponent(btoa(JSON.stringify(payload)));
           const link = baseUrl + '?d=' + encoded;
@@ -389,16 +444,36 @@
           const tr = document.createElement('tr');
           const tdGiver = document.createElement('td');
           const tdLink = document.createElement('td');
+          const tdAction = document.createElement('td');
 
+          // 送礼人
           tdGiver.textContent = names[i];
+
+          // 链接本身
           const a = document.createElement('a');
           a.href = link;
           a.target = '_blank';
           a.textContent = link;
           tdLink.appendChild(a);
 
+          // “复制此链接”按钮
+          const copyBtnSingle = document.createElement('button');
+          copyBtnSingle.textContent = '复制此链接';
+          copyBtnSingle.className = 'btn-secondary';
+          copyBtnSingle.style.padding = '4px 10px';
+          copyBtnSingle.style.fontSize = '12px';
+          copyBtnSingle.addEventListener('click', () => {
+            navigator.clipboard.writeText(link).then(() => {
+              statusText.textContent = `已复制 ${names[i]} 的专属链接～`;
+            }).catch(() => {
+              statusText.textContent = '复制失败，可以手动复制该行链接。';
+            });
+          });
+          tdAction.appendChild(copyBtnSingle);
+
           tr.appendChild(tdGiver);
           tr.appendChild(tdLink);
+          tr.appendChild(tdAction);
           resultTableBody.appendChild(tr);
 
           allLines.push(names[i] + '：' + link);
@@ -413,6 +488,9 @@
 
       clearBtn.addEventListener('click', () => {
         namesTextarea.value = '';
+        document.getElementById('ruleBudget').value = '';
+        document.getElementById('ruleDeadline').value = '';
+        document.getElementById('ruleNote').value = '';
         resultBox.classList.add('hidden');
         message.textContent = '';
         message.classList.remove('error');
