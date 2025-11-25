@@ -292,7 +292,8 @@
     // 如果 URL 里带 d=...，进入查看者模式
     if (dataParam) {
       try {
-        const decoded = JSON.parse(atob(decodeURIComponent(dataParam)));
+        // 这里不用 atob，直接 decodeURIComponent 支持中文
+        const decoded = JSON.parse(decodeURIComponent(dataParam));
         const giverEl = document.getElementById('viewerGiver');
         const receiverEl = document.getElementById('viewerReceiver');
         giverEl.textContent = decoded.giver || '你';
@@ -425,7 +426,6 @@
 
         const { receivers, attempts } = result;
 
-        // 生成链接
         const baseUrl = window.location.href.split('?')[0];
         resultTableBody.innerHTML = '';
         let allLines = [];
@@ -438,7 +438,9 @@
             deadline: ruleDeadline,
             note:     ruleNote
           };
-          const encoded = encodeURIComponent(btoa(JSON.stringify(payload)));
+
+          // 这里也不用 btoa，直接 encodeURIComponent + JSON，支持中文
+          const encoded = encodeURIComponent(JSON.stringify(payload));
           const link = baseUrl + '?d=' + encoded;
 
           const tr = document.createElement('tr');
@@ -446,17 +448,14 @@
           const tdLink = document.createElement('td');
           const tdAction = document.createElement('td');
 
-          // 送礼人
           tdGiver.textContent = names[i];
 
-          // 链接本身
           const a = document.createElement('a');
           a.href = link;
           a.target = '_blank';
           a.textContent = link;
           tdLink.appendChild(a);
 
-          // “复制此链接”按钮
           const copyBtnSingle = document.createElement('button');
           copyBtnSingle.textContent = '复制此链接';
           copyBtnSingle.className = 'btn-secondary';
@@ -481,8 +480,6 @@
 
         resultBox.classList.remove('hidden');
         statusText.textContent = `已为 ${names.length} 人生成专属链接（尝试次数：${attempts} 次）。`;
-
-        // 保存到按钮上，方便复制
         copyAllBtn.dataset.lines = allLines.join('\n');
       });
 
